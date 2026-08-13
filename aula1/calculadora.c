@@ -52,14 +52,14 @@ int main(void) {
         double resultado;
         char operacao;
 
-        printf("\nDigite a operacao (+, -, *, /) ou 'q' para sair: ");
+        printf("\nDigite a operacao (+, -, *, /) ou 's' para sair: ");
 
         if (scanf_s(" %c", &operacao, 1) != 1) {
             printf("Erro ao ler a operacao.\n");
             break;
         }
 
-        if (operacao == 'q' || operacao == 'Q') {
+        if (operacao == 's' || operacao == 'S') {
             break;
         }
 
