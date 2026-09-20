@@ -1,0 +1,186 @@
+/* 
+ * Projeto RTOS I - SOCPS
+ *
+ * Curso: Bacharelado em Ciência da Computação (BCC)
+ * Turma: 4º U - Noite
+ * Estudante: Sérgio Henrique da Cunha Calazans
+ *
+ * Programa no FreeRTOS destinado a controlar um software de quadricoptero
+*/
+
+#include "FreeRTOS.h"
+#include "task.h"
+#include "basic_io.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+// Definições das constantes do programa
+#define PRIORIDADE_TAREFA 1
+#define TAMANHO_PILHA 1000
+
+// Definição das variáveis dos motores do drone
+int m0 = 0;
+int m1 = 0;
+int m2 = 0;
+int m3 = 0;
+
+// Protótipos das funções das tarefas
+void arfagem(void *pvParameters);
+void rolagem(void* pvParameters);
+void guinada(void* pvParameters);
+
+/*
+
+Arfagem:
+
+• mover para frente: aumentar a velocidade dos motores 2 e 3, diminuir a velocidade dos motores 0 e 1;
+• mover para trás: diminuir a velocidade dos motores 2 e 3, aumentar a velocidade dos motores 0 e 1;
+
+O controle de arfagem deve ser realizado 25 vezes por segundo (período de 40 ms).
+
+*/
+void arfagem(void *pvParameters)
+{
+	// Converte o parâmetro de entrada para uma string
+	char* mover = (char*)pvParameters;
+
+	for (;; )
+	{
+		// Verifica se o parâmetro de entrada é "frente" ou "tras" e ajusta a velocidade dos motores de acordo
+		if(strcmp(mover, "frente") == 0)
+		{
+			vPrintString("Movendo para frente!\n");
+			m2 += 25;
+			m3 += 25;
+			m0 -= 25;
+			m1 -= 25;
+		}
+		else
+		{
+			vPrintString("Movendo para tras!\n");
+			m2 -= 25;
+			m3 -= 25;
+			m0 += 25;
+			m1 += 25;
+		}
+
+		// Imprime a velocidade atual dos motores
+		printf("Velocidades: m0: %d, m1: %d, m2: %d, m3: %d\n", m0, m1, m2, m3);
+
+		// Aguarda o tempo definido antes de executar novamente
+		vTaskDelay(pdMS_TO_TICKS(40));
+		
+	}
+
+	// Deleta a tarefa atual
+	vTaskDelete(NULL);
+}
+
+/*
+
+Rolagem:
+
+• virar à direita: aumentar a velocidade dos motores 0 e 3, diminuir a velocidade dos motores 1 e 2;
+• virar à esquerda: diminuir a velocidade dos motores 0 e 3, aumentar a velocidade dos motores 1 e 2.
+
+O controle de rolagem deve ser realizado 50 vezes por segundo (período de 20 ms).
+
+*/
+
+void rolagem(void* pvParameters)
+{
+	// Converte o parâmetro de entrada para uma string
+	char* mover = (char*)pvParameters;
+
+	for (;; )
+	{
+		// Verifica se o parâmetro de entrada é "direita" ou "esquerda" e ajusta a velocidade dos motores de acordo
+		if (strcmp(mover, "direita") == 0)
+		{
+			vPrintString("Movendo para direita!\n");
+			m0 += 50;
+			m3 += 50;
+			m1 -= 50;
+			m2 -= 50;
+		}
+		else
+		{
+			vPrintString("Movendo para esquerda!\n");
+			m0 -= 50;
+			m3 -= 50;
+			m1 += 50;
+			m2 += 50;
+		}
+
+		// Imprime a velocidade atual dos motores
+		printf("Velocidades: m0: %d, m1: %d, m2: %d, m3: %d\n", m0, m1, m2, m3);
+
+		// Aguarda o tempo definido antes de executar novamente
+		vTaskDelay(pdMS_TO_TICKS(20));
+	}
+
+	// Deleta a tarefa atual
+	vTaskDelete(NULL);
+}
+
+/*
+
+Guinada:
+
+• sentido horário: aumentar a velocidade dos motores 0 e 2, diminuir a velocidade dos motores 1 e 3;
+• sentido anti-horário: diminuir a velocidade dos motores 0 e 2, aumentar a velocidade dos motores 1 e 3;
+
+O controle de guinada deve ser realizado 100 vezes por segundo (período de 10 ms).
+
+*/
+void guinada(void* pvParameters)
+{
+	// Converte o parâmetro de entrada para uma string
+	char* sentido = (char*)pvParameters;
+
+	for (;; )
+	{
+		// Verifica se o parâmetro de entrada é "horario" ou "anti-horario" e ajusta a velocidade dos motores de acordo
+		if (strcmp(sentido, "horario") == 0)
+		{
+			vPrintString("Movendo para sentido horario!\n");
+			m0 += 100;
+			m2 += 100;
+			m1 -= 100;
+			m3 -= 100;
+		}
+		else
+		{
+			vPrintString("Movendo para sentido anti-horario!\n");
+			m0 -= 100;
+			m2 -= 100;
+			m1 += 100;
+			m3 += 100;
+		}
+
+		// Imprime a velocidade atual dos motores
+		printf("Velocidades: m0: %d, m1: %d, m2: %d, m3: %d\n", m0, m1, m2, m3);
+
+		// Aguarda o tempo definido antes de executar novamente
+		vTaskDelay(pdMS_TO_TICKS(10));
+	}
+
+	// Deleta a tarefa atual
+	vTaskDelete(NULL);
+}
+
+
+int main_(void)
+{
+	// Criação das tarefas
+	xTaskCreate(arfagem, "Tarefa da Arfagem", TAMANHO_PILHA, (void*)"frente", PRIORIDADE_TAREFA, NULL);
+	xTaskCreate(rolagem, "Tarefa da Rolagem", TAMANHO_PILHA, (void*)"esquerda", PRIORIDADE_TAREFA, NULL);
+	xTaskCreate(guinada, "Tarefa da Guinada", TAMANHO_PILHA, (void*)"horario", PRIORIDADE_TAREFA, NULL);
+	
+	// Inicia o escalonador
+	vTaskStartScheduler();
+
+	for (;; );
+	return 0;
+}
