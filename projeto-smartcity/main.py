@@ -1,59 +1,144 @@
-from machine import Pin, ADC
+
+from machine import Pin, ADC, PWM
 import dht
 import time
 
-# Sensores e atuador
-sensor_temp = dht.DHT11(Pin(4))
+# ==========================================
+# SMART CITY - MONITORAMENTO AMBIENTAL
+# ESP32 + DHT11 + LDR + BUZZER
+# ==========================================
+
+# --- CONFIGURACAO DOS SENSORES ---
+
+# Sensor DHT11
+sensor_temp = dht.DHT11(Pin(15))
+
+# Sensor de luminosidade LDR
 sensor_luz = ADC(Pin(34))
 sensor_luz.atten(ADC.ATTN_11DB)
-buzzer = Pin(18, Pin.OUT)
-buzzer.value(0)
 
-# Limites demonstrativos
+# Buzzer com PWM
+buzzer = PWM(Pin(18))
+buzzer.freq(1500)
+buzzer.duty(0)
+
+# --- PARAMETROS DO SISTEMA ---
+
 TEMP_MAX = 30
 LUMINOSIDADE_MIN = 30
 
+INTERVALO_LEITURA = 3
+
+# --- FUNCOES ---
+
+def emitir_som(frequencia, duracao):
+    """Aciona o buzzer usando PWM."""
+    buzzer.freq(frequencia)
+    buzzer.duty(512)
+    time.sleep(duracao)
+    buzzer.duty(0)
+
+
 def tocar_buzzer(quantidade):
-    for _ in range(quantidade):
-        buzzer.value(1)
-        time.sleep_ms(200)
-        buzzer.value(0)
-        time.sleep_ms(200)
+    """Emite a quantidade de avisos definida."""
+    for i in range(quantidade):
+        emitir_som(1500, 0.5)
+        time.sleep(0.2)
+
+
+def ler_temperatura():
+    """Le temperatura e umidade do DHT11."""
+    sensor_temp.measure()
+
+    temperatura = sensor_temp.temperature()
+    umidade = sensor_temp.humidity()
+
+    return temperatura, umidade
+
 
 def ler_luminosidade():
+    """Le o LDR e calcula a luminosidade relativa."""
     leitura = sensor_luz.read()
-    percentual = leitura / 4095 * 100
-    return leitura, percentual
+
+    # Escala invertida conforme a montagem
+    luminosidade = ((4095 - leitura) / 4095) * 100
+
+    return leitura, luminosidade
+
 
 def verificar_ambiente(temperatura, luminosidade):
-    calor = temperatura > TEMP_MAX
-    escuro = luminosidade < LUMINOSIDADE_MIN
-    if calor and escuro:
-        print('ALERTA: Calor e baixa luminosidade!')
-        tocar_buzzer(3)
-    elif calor:
-        print('ALERTA: Temperatura elevada!')
-        tocar_buzzer(1)
-    elif escuro:
-        print('ALERTA: Luminosidade baixa!')
-        tocar_buzzer(2)
-    else:
-        print('Ambiente dentro dos parametros.')
-        buzzer.value(0)
+    """Verifica as condicoes ambientais."""
 
-while True:
-    try:
-        sensor_temp.measure()
-        temperatura = sensor_temp.temperature()
-        umidade = sensor_temp.humidity()
-        leitura_adc, luminosidade = ler_luminosidade()
-        print('\n--- MONITORAMENTO AMBIENTAL ---')
-        print('Temperatura:', temperatura, 'C')
-        print('Umidade:', umidade, '%')
-        print('Luminosidade relativa: {:.1f}%'.format(luminosidade))
-        print('ADC:', leitura_adc)
-        verificar_ambiente(temperatura, luminosidade)
-    except OSError as erro:
-        print('Erro na leitura do sensor:', erro)
-        buzzer.value(0)
-    time.sleep(2)
+    temperatura_alta = temperatura > TEMP_MAX
+    luminosidade_baixa = luminosidade < LUMINOSIDADE_MIN
+
+    if temperatura_alta and luminosidade_baixa:
+        print("ALERTA: Temperatura alta e pouca luz!")
+        tocar_buzzer(3)
+
+    elif temperatura_alta:
+        print("ALERTA: Temperatura elevada!")
+        tocar_buzzer(1)
+
+    elif luminosidade_baixa:
+        print("ALERTA: Luminosidade baixa!")
+        tocar_buzzer(2)
+
+    else:
+        print("STATUS: Ambiente dentro dos parametros.")
+        buzzer.duty(0)
+
+
+def exibir_dados(temperatura, umidade, adc, luminosidade):
+    """Exibe as informacoes no terminal."""
+
+    print("\n================================")
+    print("    SMART CITY - MONITORAMENTO")
+    print("================================")
+
+    print("Temperatura: {} C".format(temperatura))
+    print("Umidade: {} %".format(umidade))
+    print("Luminosidade: {:.1f} %".format(luminosidade))
+    print("Leitura ADC:", adc)
+
+    print("--------------------------------")
+
+
+# --- PROGRAMA PRINCIPAL ---
+
+print("Inicializando Smart City...")
+time.sleep(2)
+
+try:
+    while True:
+        try:
+            # Leitura dos sensores
+            temperatura, umidade = ler_temperatura()
+            adc, luminosidade = ler_luminosidade()
+
+            # Exibicao dos dados
+            exibir_dados(
+                temperatura,
+                umidade,
+                adc,
+                luminosidade
+            )
+
+            # Verificacao dos alertas
+            verificar_ambiente(
+                temperatura,
+                luminosidade
+            )
+
+        except OSError as erro:
+            print("Erro na leitura do sensor:", erro)
+            buzzer.duty(0)
+
+        time.sleep(INTERVALO_LEITURA)
+
+except KeyboardInterrupt:
+    print("\nMonitoramento encerrado.")
+
+finally:
+    buzzer.duty(0)
+    buzzer.deinit()
