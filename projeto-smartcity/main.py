@@ -11,7 +11,7 @@ import time
 # --- CONFIGURACAO DOS SENSORES ---
 
 # Sensor DHT11
-sensor_temp = dht.DHT11(Pin(15))
+sensor_temp = dht.DHT11(Pin(4))
 
 # Sensor de luminosidade LDR
 sensor_luz = ADC(Pin(34))
