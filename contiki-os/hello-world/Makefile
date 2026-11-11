@@ -1,5 +1,5 @@
 CONTIKI_PROJECT = hello-world
 all: $(CONTIKI_PROJECT)
 
-CONTIKI = /home/sergiocalazans/contiki-ng
+CONTIKI = ../../..
 include $(CONTIKI)/Makefile.include
